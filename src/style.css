@@ -98,5 +98,6 @@ canvas {
   border: 2px solid black;
   border-radius: 15px;
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+  margin: auto;
   display: block;
 }

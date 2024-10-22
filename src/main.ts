@@ -17,6 +17,7 @@ const context = canvas.getContext("2d");
 let isDrawing = false;
 let currentStroke: Array<[number, number]> = [];
 let strokes: Array<Array<[number, number]>> = [];
+let redoStrokes: Array<Array<[number, number]>> = [];
 
 canvas.addEventListener("mousedown", (e) => {
     currentStroke = [];
@@ -45,6 +46,7 @@ canvas.addEventListener("mouseleave", () => {
     if (isDrawing) {
         isDrawing = false;
         strokes.push(currentStroke);
+        redoStrokes = [];
         canvas.dispatchEvent(new Event("drawing-changed"));
     }
 });
@@ -95,6 +97,34 @@ clearButton.addEventListener("click", () => {
 
     context.clearRect(0, 0, canvas.width, canvas.height);
     strokes = [];
+    redoStrokes = [];
 });
 
+//add undo button
+const undoButton = document.createElement("button");
+undoButton.innerHTML = "UNDO";
+document.body.appendChild(undoButton);
+
+undoButton.addEventListener("click", () => {
+    const lastStroke = strokes.pop();
+
+    if (lastStroke) {
+        redoStrokes.push(lastStroke);
+    }
+    redrawCanvas();
+})
+
+//add redo button
+const redoButton = document.createElement("button");
+redoButton.innerHTML = "REDO";
+document.body.appendChild(redoButton);
+
+redoButton.addEventListener("click", () => {
+    const lastredoStroke = redoStrokes.pop();
+    
+    if (lastredoStroke) {
+        strokes.push(lastredoStroke)
+    }
+    redrawCanvas();
+})
 

@@ -15,46 +15,82 @@ const context = canvas.getContext("2d");
 
 //listens for mouse activities to draw on canvas
 let isDrawing = false;
-let x = 0;
-let y = 0;
+let currentStroke: Array<[number, number]> = [];
+let strokes: Array<Array<[number, number]>> = [];
 
 canvas.addEventListener("mousedown", (e) => {
-    x = e.offsetX;
-    y = e.offsetY;
+    currentStroke = [];
     isDrawing = true;
+    createPoint(e.offsetX, e.offsetY);
+    redrawCanvas();
 });
 
 canvas.addEventListener("mousemove", (e) => {
     if (isDrawing) {
-        drawLine(context, x, y, e.offsetX, e.offsetY);
-        x = e.offsetX;
-        y = e.offsetY;
+        createPoint(e.offsetX, e.offsetY);
+        redrawCanvas();
     }
 });
 
 canvas.addEventListener("mouseup", (e) => {
+    if (!isDrawing) return;
+    
     isDrawing = false;
-})
+    strokes.push(currentStroke);
+    canvas.dispatchEvent(new Event("drawing-changed"));
+});
 
-canvas.addEventListener("mouseleave", (e) => {
-    isDrawing = false;
-})
+canvas.addEventListener("mouseleave", () => {
+    if (isDrawing) {
+        isDrawing = false;
+        strokes.push(currentStroke);
+        canvas.dispatchEvent(new Event("drawing-changed"));
+    }
+});
 
-function drawLine(context, x1, y1, x2, y2) {
-    context.beginPath();
+function createPoint(x: number, y: number) {
+    currentStroke.push([x, y]);
+}
+
+//redraw canvas with stroke array
+function redrawCanvas() {
+    if (!context) return;
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
     context.strokeStyle = "white";
     context.lineWidth = 1;
-    context.moveTo(x1, y1);
-    context.lineTo(x2, y2);
+
+    strokes.forEach(stroke => drawStroke(stroke));
+    drawStroke(currentStroke);
+}
+
+//draw stroke
+function drawStroke(stroke: Array<[number, number]>) {
+    if (!context) return; 
+
+    if (stroke.length < 2) return;
+    context.beginPath();
+    context.moveTo(stroke[0][0], stroke[0][1]);
+    for (let i = 1; i < stroke.length; i++) {
+        context.lineTo(stroke[i][0], stroke[i][1]);
+    }
     context.stroke();
     context.closePath();
 }
 
+//observes for event 
+canvas.addEventListener("drawing-changed", () => {
+    redrawCanvas();
+});
+
 //add clear button
 const clearButton = document.createElement("button");
-clearButton.innerHTML = "Clear";
-document.body.append(clearButton);
+clearButton.innerHTML = "CLEAR";
+document.body.appendChild(clearButton);
 
 clearButton.addEventListener("click", () => {
-    context?.clearRect(0, 0, canvas.width, canvas.height);
+    if (!context) return;
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    strokes = [];
 });

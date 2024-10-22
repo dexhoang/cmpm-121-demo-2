@@ -37,6 +37,7 @@ canvas.addEventListener("mouseup", (e) => {
     
     isDrawing = false;
     strokes.push(currentStroke);
+    currentStroke = [];
     canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
@@ -62,6 +63,7 @@ function redrawCanvas() {
 
     strokes.forEach(stroke => drawStroke(stroke));
     drawStroke(currentStroke);
+    
 }
 
 //draw stroke
@@ -94,3 +96,5 @@ clearButton.addEventListener("click", () => {
     context.clearRect(0, 0, canvas.width, canvas.height);
     strokes = [];
 });
+
+

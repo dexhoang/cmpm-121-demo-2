@@ -31,6 +31,31 @@ class MarkerLine implements Drawable {
     }
 }
 
+class ToolPreview implements Drawable{
+    private x: number;
+    private y: number;
+    private thickness: number;
+
+    constructor(x: number, y: number, thickness: number) {
+        this.x = 0;
+        this.y = 0;
+        this.thickness = thickness;
+    }
+
+    updatePosition(x: number, y: number): void {
+        this.x = x;
+        this.y = y;
+    }
+
+    display(ctx: CanvasRenderingContext2D): void {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.thickness / 2, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+}
+
 import "./style.css";
 
 const APP_NAME = "Sketch Me";
@@ -51,10 +76,12 @@ let isDrawing = false;
 let currentStroke: MarkerLine | null = null;
 let strokes: Drawable[] = [];
 let redoStrokes: Drawable[] = [];
+let toolPreview: ToolPreview | null = null;
 
 canvas.addEventListener("mousedown", (e) => {
     currentStroke = new MarkerLine(e.offsetX, e.offsetY, currentThickness);
     isDrawing = true;
+    toolPreview = null;
     redrawCanvas();
 });
 
@@ -62,6 +89,15 @@ canvas.addEventListener("mousemove", (e) => {
     if (isDrawing && currentStroke) {
         currentStroke.drag(e.offsetX, e.offsetY);
         redrawCanvas();
+    }
+    else {
+        if (!toolPreview) {
+            toolPreview = new ToolPreview(e.offsetX, e.offsetY, currentThickness);
+        }
+        else {
+            toolPreview.updatePosition(e.offsetX, e.offsetY);
+        }
+        canvas.dispatchEvent(new Event ("tool-moved"));
     }
 });
 
@@ -72,6 +108,7 @@ canvas.addEventListener("mouseup", (e) => {
     strokes.push(currentStroke);
     currentStroke = null;
     redoStrokes = [];
+    toolPreview = new ToolPreview(e.offsetX, e.offsetY, currentThickness);
     canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
@@ -83,6 +120,7 @@ canvas.addEventListener("mouseleave", () => {
         redoStrokes = [];
         canvas.dispatchEvent(new Event("drawing-changed"));
     }
+    toolPreview = null;
 });
 
 //redraw canvas with stroke array
@@ -97,6 +135,10 @@ function redrawCanvas() {
     if (currentStroke) {
         currentStroke.display(context);
     }
+
+    if (!isDrawing && toolPreview) {
+        toolPreview.display(context);
+    }
     
 }
 
@@ -104,6 +146,10 @@ function redrawCanvas() {
 canvas.addEventListener("drawing-changed", () => {
     redrawCanvas();
 });
+
+canvas.addEventListener("tool-moved", () => {
+    redrawCanvas();
+})
 
 //add clear button
 const clearButton = document.createElement("button");

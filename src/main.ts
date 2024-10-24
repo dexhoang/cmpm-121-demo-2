@@ -5,9 +5,11 @@ interface Drawable {
 
 class MarkerLine implements Drawable {
     private points: { x: number, y: number }[] = [];
+    private thickness: number;
 
-    constructor(initialX: number, initialY: number) {
+    constructor(initialX: number, initialY: number, thickness: number) {
         this.points.push({ x: initialX, y: initialY});
+        this.thickness = thickness; 
     }
 
     drag( x: number, y: number): void {
@@ -17,6 +19,7 @@ class MarkerLine implements Drawable {
     display(ctx: CanvasRenderingContext2D): void {
         if (this.points.length < 2) return;
 
+        ctx.lineWidth = this.thickness;
         ctx.beginPath();
         ctx.moveTo(this.points[0].x, this.points[0].y);
 
@@ -50,7 +53,7 @@ let strokes: Drawable[] = [];
 let redoStrokes: Drawable[] = [];
 
 canvas.addEventListener("mousedown", (e) => {
-    currentStroke = new MarkerLine(e.offsetX, e.offsetY);
+    currentStroke = new MarkerLine(e.offsetX, e.offsetY, currentThickness);
     isDrawing = true;
     redrawCanvas();
 });
@@ -141,3 +144,23 @@ redoButton.addEventListener("click", () => {
     redrawCanvas();
 })
 
+//add listeners for different brush size thickness
+let currentThickness = 1;
+updateSelectedTool("thinMarker");
+
+document.getElementById("thinMarker")?.addEventListener("click", () => {
+    currentThickness = 1;
+    updateSelectedTool("thinMarker");
+});
+
+document.getElementById("thickMarker")?.addEventListener("click", () => {
+    currentThickness = 5;
+    updateSelectedTool("thickMarker");
+});
+
+function updateSelectedTool(selectedID: string) {
+    document.querySelectorAll("button").forEach(button => {
+        button.classList.remove("selectedTool");
+    });
+    document.getElementById(selectedID)?.classList.add("selectedTool");
+}

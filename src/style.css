@@ -74,7 +74,7 @@ button {
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #dddddd;
 }
 button:focus,
 button:focus-visible {
@@ -100,4 +100,9 @@ canvas {
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
   margin: auto;
   display: block;
+}
+
+.selectedTool {
+  background-color: rgb(10, 10, 10);
+  border: 2px solid white;
 }

@@ -1,3 +1,33 @@
+//create class that holds objects - help from Brace
+interface Drawable {
+    display(ctx: CanvasRenderingContext2D): void;
+}
+
+class MarkerLine implements Drawable {
+    private points: { x: number, y: number }[] = [];
+
+    constructor(initialX: number, initialY: number) {
+        this.points.push({ x: initialX, y: initialY});
+    }
+
+    drag( x: number, y: number): void {
+        this.points.push({x, y});
+    }
+
+    display(ctx: CanvasRenderingContext2D): void {
+        if (this.points.length < 2) return;
+
+        ctx.beginPath();
+        ctx.moveTo(this.points[0].x, this.points[0].y);
+
+        for (let i = 1; i < this.points.length; i++) {
+            ctx.lineTo(this.points[i].x, this.points[i].y);
+        }
+
+        ctx.stroke();
+    }
+}
+
 import "./style.css";
 
 const APP_NAME = "Sketch Me";
@@ -15,45 +45,42 @@ const context = canvas.getContext("2d");
 
 //listens for mouse activities to draw on canvas
 let isDrawing = false;
-let currentStroke: Array<[number, number]> = [];
-let strokes: Array<Array<[number, number]>> = [];
-let redoStrokes: Array<Array<[number, number]>> = [];
+let currentStroke: MarkerLine | null = null;
+let strokes: Drawable[] = [];
+let redoStrokes: Drawable[] = [];
 
 canvas.addEventListener("mousedown", (e) => {
-    currentStroke = [];
+    currentStroke = new MarkerLine(e.offsetX, e.offsetY);
     isDrawing = true;
-    createPoint(e.offsetX, e.offsetY);
     redrawCanvas();
 });
 
 canvas.addEventListener("mousemove", (e) => {
-    if (isDrawing) {
-        createPoint(e.offsetX, e.offsetY);
+    if (isDrawing && currentStroke) {
+        currentStroke.drag(e.offsetX, e.offsetY);
         redrawCanvas();
     }
 });
 
 canvas.addEventListener("mouseup", (e) => {
-    if (!isDrawing) return;
+    if (!isDrawing || !currentStroke) return;
     
     isDrawing = false;
     strokes.push(currentStroke);
-    currentStroke = [];
+    currentStroke = null;
+    redoStrokes = [];
     canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
 canvas.addEventListener("mouseleave", () => {
-    if (isDrawing) {
+    if (isDrawing && currentStroke) {
         isDrawing = false;
         strokes.push(currentStroke);
+        currentStroke = null;
         redoStrokes = [];
         canvas.dispatchEvent(new Event("drawing-changed"));
     }
 });
-
-function createPoint(x: number, y: number) {
-    currentStroke.push([x, y]);
-}
 
 //redraw canvas with stroke array
 function redrawCanvas() {
@@ -63,23 +90,11 @@ function redrawCanvas() {
     context.strokeStyle = "white";
     context.lineWidth = 1;
 
-    strokes.forEach(stroke => drawStroke(stroke));
-    drawStroke(currentStroke);
-    
-}
-
-//draw stroke
-function drawStroke(stroke: Array<[number, number]>) {
-    if (!context) return; 
-
-    if (stroke.length < 2) return;
-    context.beginPath();
-    context.moveTo(stroke[0][0], stroke[0][1]);
-    for (let i = 1; i < stroke.length; i++) {
-        context.lineTo(stroke[i][0], stroke[i][1]);
+    strokes.forEach((stroke) => stroke.display(context));
+    if (currentStroke) {
+        currentStroke.display(context);
     }
-    context.stroke();
-    context.closePath();
+    
 }
 
 //observes for event 
@@ -93,11 +108,9 @@ clearButton.innerHTML = "CLEAR";
 document.body.appendChild(clearButton);
 
 clearButton.addEventListener("click", () => {
-    if (!context) return;
-
-    context.clearRect(0, 0, canvas.width, canvas.height);
     strokes = [];
     redoStrokes = [];
+    redrawCanvas();
 });
 
 //add undo button

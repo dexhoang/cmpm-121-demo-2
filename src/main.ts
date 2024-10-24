@@ -56,6 +56,52 @@ class ToolPreview implements Drawable{
     }
 }
 
+//given help by Brace for sticker classes
+class StickerPreview implements Drawable{
+    private x: number;
+    private y: number;
+    public sticker: string;
+    public visible: boolean;
+
+    constructor(sticker: string) {
+        this.sticker = sticker;
+        this.x = 0;
+        this.y = 0;
+        this.visible = true;
+    }
+
+    display(ctx: CanvasRenderingContext2D): void {
+        if (!this.visible) return;
+
+        ctx.font = "40px Arial";
+        ctx.fillText(this.sticker, this.x, this.y);
+    }
+
+    updatePosition(x: number, y: number): void {
+        const xOffset = -30;
+        this.x = x + xOffset;
+        this.y = y;
+    }
+}
+
+class PlaceSticker implements Drawable {
+    public x: number;
+    public y: number;
+    public sticker: string;
+
+    constructor (sticker: string, x: number, y: number) {
+        this.sticker = sticker;
+        this.x = x;
+        this.y = y;
+    }
+
+    display(ctx: CanvasRenderingContext2D): void {
+        ctx.font = "40px Arial";
+        const xOffset = -30;
+        ctx.fillText(this.sticker, this.x + xOffset, this.y);
+    }
+}
+
 import "./style.css";
 
 const APP_NAME = "Sketch Me";
@@ -77,15 +123,43 @@ let currentStroke: MarkerLine | null = null;
 let strokes: Drawable[] = [];
 let redoStrokes: Drawable[] = [];
 let toolPreview: ToolPreview | null = null;
+let stickerPreview: StickerPreview | null = null;
+let selectedSticker: PlaceSticker | null = null;
 
 canvas.addEventListener("mousedown", (e) => {
-    currentStroke = new MarkerLine(e.offsetX, e.offsetY, currentThickness);
-    isDrawing = true;
-    toolPreview = null;
-    redrawCanvas();
+    for (const stroke of strokes) {
+        if (stroke instanceof PlaceSticker) {
+            const dx = Math.abs(e.offsetX - stroke.x);
+            const dy = Math.abs(e.offsetY - (stroke.y - 15));
+
+            if (dx < 20 && dy < 20) {
+                selectedSticker = stroke;
+                break;
+            }
+        }
+    }
+
+    if (!selectedSticker) {
+        currentStroke = new MarkerLine(e.offsetX, e.offsetY, currentThickness);
+        isDrawing = true;
+        toolPreview = null;
+        redrawCanvas();
+    }
 });
 
 canvas.addEventListener("mousemove", (e) => {
+    if (selectedSticker) {
+        selectedSticker.x = e.offsetX;
+        selectedSticker.y = e.offsetY;
+        redrawCanvas();
+    }
+
+    if (stickerPreview) {
+        stickerPreview.updatePosition(e.offsetX, e.offsetY);
+        stickerPreview.visible = !isDrawing;
+        redrawCanvas();
+    }
+
     if (isDrawing && currentStroke) {
         currentStroke.drag(e.offsetX, e.offsetY);
         redrawCanvas();
@@ -102,14 +176,18 @@ canvas.addEventListener("mousemove", (e) => {
 });
 
 canvas.addEventListener("mouseup", (e) => {
-    if (!isDrawing || !currentStroke) return;
-    
-    isDrawing = false;
-    strokes.push(currentStroke);
-    currentStroke = null;
-    redoStrokes = [];
-    toolPreview = new ToolPreview(e.offsetX, e.offsetY, currentThickness);
-    canvas.dispatchEvent(new Event("drawing-changed"));
+    if (selectedSticker) {
+        selectedSticker = null;
+        canvas.dispatchEvent(new Event("drawing-changed"));
+    }
+    else if (isDrawing && currentStroke) {
+        isDrawing = false;
+        strokes.push(currentStroke);
+        currentStroke = null;
+        redoStrokes = [];
+        toolPreview = new ToolPreview(e.offsetX, e.offsetY, currentThickness);
+        canvas.dispatchEvent(new Event("drawing-changed"));
+    }
 });
 
 canvas.addEventListener("mouseleave", () => {
@@ -123,6 +201,20 @@ canvas.addEventListener("mouseleave", () => {
     toolPreview = null;
 });
 
+canvas.addEventListener("click", (event) => {
+    if (stickerPreview && stickerPreview.visible) {
+        const placeSticker = new PlaceSticker(
+            stickerPreview.sticker,
+            event.offsetX,
+            event.offsetY
+        );
+
+        strokes.push(placeSticker);
+        stickerPreview = null;
+        redrawCanvas();
+    }
+});
+
 //redraw canvas with stroke array
 function redrawCanvas() {
     if (!context) return;
@@ -132,12 +224,17 @@ function redrawCanvas() {
     context.lineWidth = 1;
 
     strokes.forEach((stroke) => stroke.display(context));
+
     if (currentStroke) {
         currentStroke.display(context);
     }
 
     if (!isDrawing && toolPreview) {
         toolPreview.display(context);
+    }
+
+    if (!isDrawing && stickerPreview && stickerPreview.visible) {
+        stickerPreview.display(context);
     }
     
 }
@@ -210,3 +307,18 @@ function updateSelectedTool(selectedID: string) {
     });
     document.getElementById(selectedID)?.classList.add("selectedTool");
 }
+
+//add sticker event handler
+function handleSticker(event: MouseEvent) {
+    const sticker = (event.target as HTMLElement).textContent || "";
+
+    stickerPreview = new StickerPreview(sticker);
+    stickerPreview.visible = true;
+
+    const toolMovedEvent = new Event("tool-moved");
+    canvas.dispatchEvent(toolMovedEvent);
+}
+
+document.getElementById("sticker1")?.addEventListener("click", handleSticker)
+document.getElementById("sticker2")?.addEventListener("click", handleSticker)
+document.getElementById("sticker3")?.addEventListener("click", handleSticker)

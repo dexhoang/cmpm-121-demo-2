@@ -1,3 +1,10 @@
+//array of stickers in JSON syntax
+const stickerArray = [
+    {id: "sticker1", label: "😆"},
+    {id: "sticker2", label: "🐰"},
+    {id: "sticker3", label: "😕"},
+];
+
 //create class that holds objects - help from Brace
 interface Drawable {
     display(ctx: CanvasRenderingContext2D): void;
@@ -119,9 +126,9 @@ const context = canvas.getContext("2d");
 
 //listens for mouse activities to draw on canvas
 let isDrawing = false;
-let currentStroke: MarkerLine | null = null;
 let strokes: Drawable[] = [];
 let redoStrokes: Drawable[] = [];
+let currentStroke: MarkerLine | null = null;
 let toolPreview: ToolPreview | null = null;
 let stickerPreview: StickerPreview | null = null;
 let selectedSticker: PlaceSticker | null = null;
@@ -248,6 +255,61 @@ canvas.addEventListener("tool-moved", () => {
     redrawCanvas();
 })
 
+//add listeners for different brush size thickness
+let currentThickness = 1;
+updateSelectedTool("thinMarker");
+
+document.getElementById("thinMarker")?.addEventListener("click", () => {
+    currentThickness = 1;
+    updateSelectedTool("thinMarker");
+});
+
+document.getElementById("thickMarker")?.addEventListener("click", () => {
+    currentThickness = 5;
+    updateSelectedTool("thickMarker");
+});
+
+function updateSelectedTool(selectedID: string) {
+    document.querySelectorAll("button").forEach(button => {
+        button.classList.remove("selectedTool");
+    });
+    document.getElementById(selectedID)?.classList.add("selectedTool");
+}
+
+//add sticker event handler
+function handleSticker(stickerLabel: string) {
+    stickerPreview = new StickerPreview(stickerLabel);
+    stickerPreview.visible = true;
+    canvas.dispatchEvent(new Event("tool-moved"));
+}
+
+function addStickerButton(sticker: { id: string, label: string}) {
+    const button = document.createElement("button");
+    button.id = sticker.id;
+    button.textContent = sticker.label;
+    button.addEventListener("click", () => handleSticker(sticker.label));
+    app.appendChild(button);
+}
+
+stickerArray.forEach(sticker => addStickerButton(sticker));
+
+//add custom sticker button
+const customStickerButton = document.createElement("button");
+customStickerButton.id = "customSticker";
+customStickerButton.textContent = "Add Custom Sticker";
+customStickerButton.addEventListener("click", () => {
+    const userInput = prompt("Custom Sticker Text", "📖");
+    if (userInput) {
+        const newSticker = { id: `customSticker_${stickerArray.length}`, label: userInput.trim() };
+        stickerArray.push(newSticker);
+        addStickerButton(newSticker);
+        console.log(`Added new sticker: ${userInput}`);
+    } else {
+        alert("No input provided");
+    }
+});
+document.body.appendChild(customStickerButton);
+
 //add clear button
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "CLEAR";
@@ -286,39 +348,3 @@ redoButton.addEventListener("click", () => {
     }
     redrawCanvas();
 })
-
-//add listeners for different brush size thickness
-let currentThickness = 1;
-updateSelectedTool("thinMarker");
-
-document.getElementById("thinMarker")?.addEventListener("click", () => {
-    currentThickness = 1;
-    updateSelectedTool("thinMarker");
-});
-
-document.getElementById("thickMarker")?.addEventListener("click", () => {
-    currentThickness = 5;
-    updateSelectedTool("thickMarker");
-});
-
-function updateSelectedTool(selectedID: string) {
-    document.querySelectorAll("button").forEach(button => {
-        button.classList.remove("selectedTool");
-    });
-    document.getElementById(selectedID)?.classList.add("selectedTool");
-}
-
-//add sticker event handler
-function handleSticker(event: MouseEvent) {
-    const sticker = (event.target as HTMLElement).textContent || "";
-
-    stickerPreview = new StickerPreview(sticker);
-    stickerPreview.visible = true;
-
-    const toolMovedEvent = new Event("tool-moved");
-    canvas.dispatchEvent(toolMovedEvent);
-}
-
-document.getElementById("sticker1")?.addEventListener("click", handleSticker)
-document.getElementById("sticker2")?.addEventListener("click", handleSticker)
-document.getElementById("sticker3")?.addEventListener("click", handleSticker)

@@ -134,6 +134,8 @@ let toolPreview: ToolPreview | null = null;
 let stickerPreview: StickerPreview | null = null;
 let selectedSticker: PlaceSticker | null = null;
 
+//#region mouse events
+
 canvas.addEventListener("mousedown", (e) => {
     for (const stroke of strokes) {
         if (stroke instanceof PlaceSticker) {
@@ -222,6 +224,7 @@ canvas.addEventListener("click", (event) => {
         redrawCanvas();
     }
 });
+//#endregion
 
 //redraw canvas with stroke array
 function redrawCanvas() {
@@ -247,15 +250,6 @@ function redrawCanvas() {
     
 }
 
-//observes for event 
-canvas.addEventListener("drawing-changed", () => {
-    redrawCanvas();
-});
-
-canvas.addEventListener("tool-moved", () => {
-    redrawCanvas();
-})
-
 //add listeners for different brush size thickness
 let currentThickness = 1;
 updateSelectedTool("thinMarker");
@@ -277,6 +271,15 @@ function updateSelectedTool(selectedID: string) {
     document.getElementById(selectedID)?.classList.add("selectedTool");
 }
 
+//observes for event 
+canvas.addEventListener("drawing-changed", () => {
+    redrawCanvas();
+});
+
+canvas.addEventListener("tool-moved", () => {
+    redrawCanvas();
+})
+
 //add sticker event handler
 function handleSticker(stickerLabel: string) {
     stickerPreview = new StickerPreview(stickerLabel);
@@ -297,7 +300,7 @@ stickerArray.forEach(sticker => addStickerButton(sticker));
 //add custom sticker button
 const customStickerButton = document.createElement("button");
 customStickerButton.id = "customSticker";
-customStickerButton.textContent = "Add Custom Sticker";
+customStickerButton.textContent = "ADD CUSTOM STICKER";
 customStickerButton.addEventListener("click", () => {
     const userInput = prompt("Custom Sticker Text", "📖");
     if (userInput) {
@@ -305,14 +308,15 @@ customStickerButton.addEventListener("click", () => {
         stickerArray.push(newSticker);
         addStickerButton(newSticker);
         console.log(`Added new sticker: ${userInput}`);
-    } else {
-        alert("No input provided");
     }
 });
 document.body.appendChild(customStickerButton);
 
+//#region control buttons
+
 //add clear button
 const clearButton = document.createElement("button");
+clearButton.id = "clearButton";
 clearButton.innerHTML = "CLEAR";
 document.body.appendChild(clearButton);
 
@@ -324,6 +328,7 @@ clearButton.addEventListener("click", () => {
 
 //add undo button
 const undoButton = document.createElement("button");
+undoButton.id = "undoButton";
 undoButton.innerHTML = "UNDO";
 document.body.appendChild(undoButton);
 
@@ -338,6 +343,7 @@ undoButton.addEventListener("click", () => {
 
 //add redo button
 const redoButton = document.createElement("button");
+redoButton.id = "redoButton"
 redoButton.innerHTML = "REDO";
 document.body.appendChild(redoButton);
 
@@ -375,6 +381,32 @@ function exportDrawing() {
 }
 
 const exportButton = document.createElement("button");
-exportButton.innerHTML = "Export";
+exportButton.id = "exportButton";
+exportButton.innerHTML = "EXPORT";
 document.body.appendChild(exportButton);
 exportButton.addEventListener("click", exportDrawing);
+
+//#endregion
+
+//styling code
+const actionButtonContainer = document.createElement("div");
+actionButtonContainer.id = "actionButtonContainer";
+document.body.appendChild(actionButtonContainer);
+
+actionButtonContainer.appendChild(clearButton);
+actionButtonContainer.appendChild(undoButton);
+actionButtonContainer.appendChild(redoButton);
+actionButtonContainer.appendChild(exportButton);
+
+const thinMarkerButton = document.getElementById("thinMarker");
+const thickMarkerButton = document.getElementById("thickMarker");
+
+const markerButtonContainer = document.createElement("div");
+markerButtonContainer.id = "markerButtonContainer";
+document.body.appendChild(markerButtonContainer);
+
+if (thinMarkerButton && thickMarkerButton) {
+    markerButtonContainer.appendChild(thinMarkerButton);
+    markerButtonContainer.appendChild(thickMarkerButton);
+    markerButtonContainer.appendChild(customStickerButton);
+}

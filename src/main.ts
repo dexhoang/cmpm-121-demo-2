@@ -13,21 +13,23 @@ interface Drawable {
 class MarkerLine implements Drawable {
     private points: { x: number, y: number }[] = [];
     private thickness: number;
+    private color: string;
 
     constructor(initialX: number, initialY: number, thickness: number) {
-        this.points.push({ x: initialX, y: initialY});
-        this.thickness = thickness; 
+        this.points.push({ x: initialX, y: initialY });
+        this.thickness = thickness;
+        this.color = defaultColor;
     }
 
-    drag( x: number, y: number): void {
-        this.points.push({x, y});
+    drag(x: number, y: number): void {
+        this.points.push({ x, y });
     }
 
     display(ctx: CanvasRenderingContext2D): void {
         if (this.points.length < 2) return;
 
         ctx.lineWidth = this.thickness;
-        ctx.strokeStyle = "white";
+        ctx.strokeStyle = this.color; // Set the selected color
         ctx.beginPath();
         ctx.moveTo(this.points[0].x, this.points[0].y);
 
@@ -56,7 +58,7 @@ class ToolPreview implements Drawable{
     }
 
     display(ctx: CanvasRenderingContext2D): void {
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.strokeStyle = defaultColor;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.thickness / 2, 0, Math.PI * 2);
@@ -251,16 +253,20 @@ function redrawCanvas() {
 }
 
 //add listeners for different brush size thickness
-let currentThickness = 1;
+let currentThickness = 2;
 updateSelectedTool("thinMarker");
 
 document.getElementById("thinMarker")?.addEventListener("click", () => {
-    currentThickness = 1;
+    currentThickness = 3;
+    defaultColor = getRandomColor();
+    colorPicker.value = defaultColor;
     updateSelectedTool("thinMarker");
 });
 
 document.getElementById("thickMarker")?.addEventListener("click", () => {
-    currentThickness = 5;
+    currentThickness = 6;
+    defaultColor = getRandomColor();
+    colorPicker.value = defaultColor;
     updateSelectedTool("thickMarker");
 });
 
@@ -409,4 +415,28 @@ if (thinMarkerButton && thickMarkerButton) {
     markerButtonContainer.appendChild(thinMarkerButton);
     markerButtonContainer.appendChild(thickMarkerButton);
     markerButtonContainer.appendChild(customStickerButton);
+}
+
+//create color picker
+let defaultColor = "#FFFFFF";
+
+const colorPicker = document.createElement("input");
+colorPicker.type = "color";
+colorPicker.value = defaultColor; // initial color
+colorPicker.id = "thinMarkerColorPicker";
+
+colorPicker.addEventListener("input", (e) => {
+    defaultColor = (e.target as HTMLInputElement).value;
+});
+
+markerButtonContainer.appendChild(colorPicker);
+
+//random color picker
+function getRandomColor(): string {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
 }

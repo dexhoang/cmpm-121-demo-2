@@ -27,6 +27,7 @@ class MarkerLine implements Drawable {
         if (this.points.length < 2) return;
 
         ctx.lineWidth = this.thickness;
+        ctx.strokeStyle = "white";
         ctx.beginPath();
         ctx.moveTo(this.points[0].x, this.points[0].y);
 
@@ -348,3 +349,32 @@ redoButton.addEventListener("click", () => {
     }
     redrawCanvas();
 })
+
+//export canvas
+const exportCanvas = document.createElement("canvas");
+exportCanvas.width = canvas.width * 4;
+exportCanvas.height = canvas.height * 4;
+const exportCtx = exportCanvas.getContext("2d");
+
+function exportDrawing() {
+    if (!exportCtx) return;
+
+    exportCtx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+    exportCtx.save();
+    exportCtx.scale(4, 4);
+    exportCtx.translate(0, 0);
+
+    strokes.forEach(stroke => stroke.display(exportCtx));
+
+    const link = document.createElement("a");
+    link.download = "exported_drawing.png";
+    link.href = exportCanvas.toDataURL("image/png");
+    link.click();
+
+    exportCtx.restore();
+}
+
+const exportButton = document.createElement("button");
+exportButton.innerHTML = "Export";
+document.body.appendChild(exportButton);
+exportButton.addEventListener("click", exportDrawing);

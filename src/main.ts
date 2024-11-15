@@ -21,64 +21,43 @@ let selectedSticker: PlaceSticker | null = null;
 
 let currentThickness = 2;
 
-//buttons:
-const customStickerButton = document.createElement("button");
-customStickerButton.id = "customSticker";
-customStickerButton.textContent = "ADD CUSTOM STICKER";
+let defaultColor = "#FFFFFF";
 
-document.body.appendChild(customStickerButton);
+const buttonConfigs = [
+    { id: "customSticker", text: "ADD CUSTOM STICKER" },
+    { id: "clearButton", text: "CLEAR" },
+    { id: "undoButton", text: "UNDO" },
+    { id: "redoButton", text: "REDO" },
+    { id: "exportButton", text: "EXPORT" }
+];
 
-const clearButton = document.createElement("button");
-clearButton.id = "clearButton";
-clearButton.innerHTML = "CLEAR";
-document.body.appendChild(clearButton);
-
-const undoButton = document.createElement("button");
-undoButton.id = "undoButton";
-undoButton.innerHTML = "UNDO";
-document.body.appendChild(undoButton);
-
-const redoButton = document.createElement("button");
-redoButton.id = "redoButton"
-redoButton.innerHTML = "REDO";
-document.body.appendChild(redoButton);
+const [customStickerButton, clearButton, undoButton, redoButton, exportButton] = createButtons(buttonConfigs);
 
 const exportCanvas = document.createElement("canvas");
 exportCanvas.width = canvas.width * 4;
 exportCanvas.height = canvas.height * 4;
 const exportCtx = exportCanvas.getContext("2d");
 
-let defaultColor = "#FFFFFF";
-
 const colorPicker = document.createElement("input");
 colorPicker.type = "color";
 colorPicker.value = defaultColor;
 colorPicker.id = "thinMarkerColorPicker";
 
-const exportButton = document.createElement("button");
-exportButton.id = "exportButton";
-exportButton.innerHTML = "EXPORT";
-document.body.appendChild(exportButton);
-exportButton.addEventListener("click", exportDrawing);
-
-
 const actionButtonContainer = document.createElement("div");
 actionButtonContainer.id = "actionButtonContainer";
 document.body.appendChild(actionButtonContainer);
 
-actionButtonContainer.appendChild(clearButton);
-actionButtonContainer.appendChild(undoButton);
-actionButtonContainer.appendChild(redoButton);
-actionButtonContainer.appendChild(exportButton);
-
-const thinMarkerButton = document.getElementById("thinMarker");
-const thickMarkerButton = document.getElementById("thickMarker");
+[actionButtonContainer.appendChild(clearButton),
+ actionButtonContainer.appendChild(undoButton),
+ actionButtonContainer.appendChild(redoButton),
+ actionButtonContainer.appendChild(exportButton)];
 
 const markerButtonContainer = document.createElement("div");
 markerButtonContainer.id = "markerButtonContainer";
 document.body.appendChild(markerButtonContainer);
 
-
+const thinMarkerButton = document.getElementById("thinMarker");
+const thickMarkerButton = document.getElementById("thickMarker");
 
 if (thinMarkerButton && thickMarkerButton) {
     markerButtonContainer.appendChild(thinMarkerButton);
@@ -88,7 +67,6 @@ if (thinMarkerButton && thickMarkerButton) {
 
 markerButtonContainer.appendChild(colorPicker);
 
-//array of stickers in JSON syntax
 const stickerArray = [
     {id: "sticker1", label: "😆"},
     {id: "sticker2", label: "🐰"},
@@ -119,7 +97,7 @@ class MarkerLine implements Drawable {
         if (this.points.length < 2) return;
 
         ctx.lineWidth = this.thickness;
-        ctx.strokeStyle = this.color; // Set the selected color
+        ctx.strokeStyle = this.color;
         ctx.beginPath();
         ctx.moveTo(this.points[0].x, this.points[0].y);
 
@@ -200,6 +178,16 @@ class PlaceSticker implements Drawable {
         const xOffset = -30;
         ctx.fillText(this.sticker, this.x + xOffset, this.y);
     }
+}
+
+function createButtons(buttonConfigs, container = document.body) {
+    return buttonConfigs.map(config => {
+        const button = document.createElement("button");
+        button.id = config.id;
+        button.textContent = config.text;
+        container.appendChild(button);
+        return button;
+    });
 }
 
 function redrawCanvas() {
@@ -420,6 +408,8 @@ redoButton.addEventListener("click", () => {
 colorPicker.addEventListener("input", (e) => {
     defaultColor = (e.target as HTMLInputElement).value;
 });
+
+exportButton.addEventListener("click", exportDrawing);
 
 updateSelectedTool("thinMarker");
 

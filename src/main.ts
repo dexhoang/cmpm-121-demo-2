@@ -1,3 +1,93 @@
+import "./style.css";
+
+const APP_NAME = "Sketch Me";
+const app = document.querySelector<HTMLDivElement>("#app")!;
+document.title = APP_NAME;
+
+const title = document.createElement("h1");
+title.textContent = APP_NAME;
+app.appendChild(title);
+
+const canvas = document.getElementById("display") as HTMLCanvasElement;
+const context = canvas.getContext("2d");
+
+let isDrawing = false;
+let strokes: Drawable[] = [];
+let redoStrokes: Drawable[] = [];
+let currentStroke: MarkerLine | null = null;
+let toolPreview: ToolPreview | null = null;
+let stickerPreview: StickerPreview | null = null;
+let selectedSticker: PlaceSticker | null = null;
+
+let currentThickness = 2;
+
+//buttons:
+const customStickerButton = document.createElement("button");
+customStickerButton.id = "customSticker";
+customStickerButton.textContent = "ADD CUSTOM STICKER";
+
+document.body.appendChild(customStickerButton);
+
+const clearButton = document.createElement("button");
+clearButton.id = "clearButton";
+clearButton.innerHTML = "CLEAR";
+document.body.appendChild(clearButton);
+
+const undoButton = document.createElement("button");
+undoButton.id = "undoButton";
+undoButton.innerHTML = "UNDO";
+document.body.appendChild(undoButton);
+
+const redoButton = document.createElement("button");
+redoButton.id = "redoButton"
+redoButton.innerHTML = "REDO";
+document.body.appendChild(redoButton);
+
+const exportCanvas = document.createElement("canvas");
+exportCanvas.width = canvas.width * 4;
+exportCanvas.height = canvas.height * 4;
+const exportCtx = exportCanvas.getContext("2d");
+
+let defaultColor = "#FFFFFF";
+
+const colorPicker = document.createElement("input");
+colorPicker.type = "color";
+colorPicker.value = defaultColor;
+colorPicker.id = "thinMarkerColorPicker";
+
+const exportButton = document.createElement("button");
+exportButton.id = "exportButton";
+exportButton.innerHTML = "EXPORT";
+document.body.appendChild(exportButton);
+exportButton.addEventListener("click", exportDrawing);
+
+
+const actionButtonContainer = document.createElement("div");
+actionButtonContainer.id = "actionButtonContainer";
+document.body.appendChild(actionButtonContainer);
+
+actionButtonContainer.appendChild(clearButton);
+actionButtonContainer.appendChild(undoButton);
+actionButtonContainer.appendChild(redoButton);
+actionButtonContainer.appendChild(exportButton);
+
+const thinMarkerButton = document.getElementById("thinMarker");
+const thickMarkerButton = document.getElementById("thickMarker");
+
+const markerButtonContainer = document.createElement("div");
+markerButtonContainer.id = "markerButtonContainer";
+document.body.appendChild(markerButtonContainer);
+
+
+
+if (thinMarkerButton && thickMarkerButton) {
+    markerButtonContainer.appendChild(thinMarkerButton);
+    markerButtonContainer.appendChild(thickMarkerButton);
+    markerButtonContainer.appendChild(customStickerButton);
+}
+
+markerButtonContainer.appendChild(colorPicker);
+
 //array of stickers in JSON syntax
 const stickerArray = [
     {id: "sticker1", label: "😆"},
@@ -112,31 +202,75 @@ class PlaceSticker implements Drawable {
     }
 }
 
-import "./style.css";
+function redrawCanvas() {
+    if (!context) return;
 
-const APP_NAME = "Sketch Me";
-const app = document.querySelector<HTMLDivElement>("#app")!;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = "white";
+    context.lineWidth = 1;
 
-document.title = APP_NAME;
+    strokes.forEach((stroke) => stroke.display(context));
 
-const title = document.createElement("h1");
-title.textContent = APP_NAME;
-app.appendChild(title);
+    if (currentStroke) {
+        currentStroke.display(context);
+    }
 
-//create canvas
-const canvas = document.getElementById("display") as HTMLCanvasElement;
-const context = canvas.getContext("2d");
+    if (!isDrawing && toolPreview) {
+        toolPreview.display(context);
+    }
 
-//listens for mouse activities to draw on canvas
-let isDrawing = false;
-let strokes: Drawable[] = [];
-let redoStrokes: Drawable[] = [];
-let currentStroke: MarkerLine | null = null;
-let toolPreview: ToolPreview | null = null;
-let stickerPreview: StickerPreview | null = null;
-let selectedSticker: PlaceSticker | null = null;
+    if (!isDrawing && stickerPreview && stickerPreview.visible) {
+        stickerPreview.display(context);
+    }   
+}
 
-//#region mouse events
+function exportDrawing() {
+    if (!exportCtx) return;
+
+    exportCtx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+    exportCtx.save();
+    exportCtx.scale(4, 4);
+    exportCtx.translate(0, 0);
+
+    strokes.forEach(stroke => stroke.display(exportCtx));
+
+    const link = document.createElement("a");
+    link.download = "exported_drawing.png";
+    link.href = exportCanvas.toDataURL("image/png");
+    link.click();
+
+    exportCtx.restore();
+}
+
+function updateSelectedTool(selectedID: string) {
+    document.querySelectorAll("button").forEach(button => {
+        button.classList.remove("selectedTool");
+    });
+    document.getElementById(selectedID)?.classList.add("selectedTool");
+}
+
+function handleSticker(stickerLabel: string) {
+    stickerPreview = new StickerPreview(stickerLabel);
+    stickerPreview.visible = true;
+    canvas.dispatchEvent(new Event("tool-moved"));
+}
+
+function addStickerButton(sticker: { id: string, label: string}) {
+    const button = document.createElement("button");
+    button.id = sticker.id;
+    button.textContent = sticker.label;
+    button.addEventListener("click", () => handleSticker(sticker.label));
+    app.appendChild(button);
+}
+
+function getRandomColor(): string {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
 
 canvas.addEventListener("mousedown", (e) => {
     for (const stroke of strokes) {
@@ -226,35 +360,14 @@ canvas.addEventListener("click", (event) => {
         redrawCanvas();
     }
 });
-//#endregion
 
-//redraw canvas with stroke array
-function redrawCanvas() {
-    if (!context) return;
+canvas.addEventListener("drawing-changed", () => {
+    redrawCanvas();
+});
 
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.strokeStyle = "white";
-    context.lineWidth = 1;
-
-    strokes.forEach((stroke) => stroke.display(context));
-
-    if (currentStroke) {
-        currentStroke.display(context);
-    }
-
-    if (!isDrawing && toolPreview) {
-        toolPreview.display(context);
-    }
-
-    if (!isDrawing && stickerPreview && stickerPreview.visible) {
-        stickerPreview.display(context);
-    }
-    
-}
-
-//add listeners for different brush size thickness
-let currentThickness = 2;
-updateSelectedTool("thinMarker");
+canvas.addEventListener("tool-moved", () => {
+    redrawCanvas();
+})
 
 document.getElementById("thinMarker")?.addEventListener("click", () => {
     currentThickness = 3;
@@ -270,43 +383,6 @@ document.getElementById("thickMarker")?.addEventListener("click", () => {
     updateSelectedTool("thickMarker");
 });
 
-function updateSelectedTool(selectedID: string) {
-    document.querySelectorAll("button").forEach(button => {
-        button.classList.remove("selectedTool");
-    });
-    document.getElementById(selectedID)?.classList.add("selectedTool");
-}
-
-//observes for event 
-canvas.addEventListener("drawing-changed", () => {
-    redrawCanvas();
-});
-
-canvas.addEventListener("tool-moved", () => {
-    redrawCanvas();
-})
-
-//add sticker event handler
-function handleSticker(stickerLabel: string) {
-    stickerPreview = new StickerPreview(stickerLabel);
-    stickerPreview.visible = true;
-    canvas.dispatchEvent(new Event("tool-moved"));
-}
-
-function addStickerButton(sticker: { id: string, label: string}) {
-    const button = document.createElement("button");
-    button.id = sticker.id;
-    button.textContent = sticker.label;
-    button.addEventListener("click", () => handleSticker(sticker.label));
-    app.appendChild(button);
-}
-
-stickerArray.forEach(sticker => addStickerButton(sticker));
-
-//add custom sticker button
-const customStickerButton = document.createElement("button");
-customStickerButton.id = "customSticker";
-customStickerButton.textContent = "ADD CUSTOM STICKER";
 customStickerButton.addEventListener("click", () => {
     const userInput = prompt("Custom Sticker Text", "📖");
     if (userInput) {
@@ -316,27 +392,12 @@ customStickerButton.addEventListener("click", () => {
         console.log(`Added new sticker: ${userInput}`);
     }
 });
-document.body.appendChild(customStickerButton);
-
-//#region control buttons
-
-//add clear button
-const clearButton = document.createElement("button");
-clearButton.id = "clearButton";
-clearButton.innerHTML = "CLEAR";
-document.body.appendChild(clearButton);
 
 clearButton.addEventListener("click", () => {
     strokes = [];
     redoStrokes = [];
     redrawCanvas();
 });
-
-//add undo button
-const undoButton = document.createElement("button");
-undoButton.id = "undoButton";
-undoButton.innerHTML = "UNDO";
-document.body.appendChild(undoButton);
 
 undoButton.addEventListener("click", () => {
     const lastStroke = strokes.pop();
@@ -347,12 +408,6 @@ undoButton.addEventListener("click", () => {
     redrawCanvas();
 })
 
-//add redo button
-const redoButton = document.createElement("button");
-redoButton.id = "redoButton"
-redoButton.innerHTML = "REDO";
-document.body.appendChild(redoButton);
-
 redoButton.addEventListener("click", () => {
     const lastredoStroke = redoStrokes.pop();
     
@@ -362,81 +417,10 @@ redoButton.addEventListener("click", () => {
     redrawCanvas();
 })
 
-//export canvas
-const exportCanvas = document.createElement("canvas");
-exportCanvas.width = canvas.width * 4;
-exportCanvas.height = canvas.height * 4;
-const exportCtx = exportCanvas.getContext("2d");
-
-function exportDrawing() {
-    if (!exportCtx) return;
-
-    exportCtx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
-    exportCtx.save();
-    exportCtx.scale(4, 4);
-    exportCtx.translate(0, 0);
-
-    strokes.forEach(stroke => stroke.display(exportCtx));
-
-    const link = document.createElement("a");
-    link.download = "exported_drawing.png";
-    link.href = exportCanvas.toDataURL("image/png");
-    link.click();
-
-    exportCtx.restore();
-}
-
-const exportButton = document.createElement("button");
-exportButton.id = "exportButton";
-exportButton.innerHTML = "EXPORT";
-document.body.appendChild(exportButton);
-exportButton.addEventListener("click", exportDrawing);
-
-//#endregion
-
-//styling code
-const actionButtonContainer = document.createElement("div");
-actionButtonContainer.id = "actionButtonContainer";
-document.body.appendChild(actionButtonContainer);
-
-actionButtonContainer.appendChild(clearButton);
-actionButtonContainer.appendChild(undoButton);
-actionButtonContainer.appendChild(redoButton);
-actionButtonContainer.appendChild(exportButton);
-
-const thinMarkerButton = document.getElementById("thinMarker");
-const thickMarkerButton = document.getElementById("thickMarker");
-
-const markerButtonContainer = document.createElement("div");
-markerButtonContainer.id = "markerButtonContainer";
-document.body.appendChild(markerButtonContainer);
-
-if (thinMarkerButton && thickMarkerButton) {
-    markerButtonContainer.appendChild(thinMarkerButton);
-    markerButtonContainer.appendChild(thickMarkerButton);
-    markerButtonContainer.appendChild(customStickerButton);
-}
-
-//create color picker
-let defaultColor = "#FFFFFF";
-
-const colorPicker = document.createElement("input");
-colorPicker.type = "color";
-colorPicker.value = defaultColor; // initial color
-colorPicker.id = "thinMarkerColorPicker";
-
 colorPicker.addEventListener("input", (e) => {
     defaultColor = (e.target as HTMLInputElement).value;
 });
 
-markerButtonContainer.appendChild(colorPicker);
+updateSelectedTool("thinMarker");
 
-//random color picker
-function getRandomColor(): string {
-    const letters = '0123456789ABCDEF';
-    let color = '#';
-    for (let i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
-}
+stickerArray.forEach(sticker => addStickerButton(sticker));
